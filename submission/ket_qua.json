@@ -1,0 +1,74 @@
+{
+  "progress": {
+    "box_iou": "ok",
+    "nms": "ok",
+    "batched_nms": "ok",
+    "average_precision": "ok",
+    "mask_iou": "ok",
+    "polygon_to_mask": "ok",
+    "mask_to_yolo_seg": "ok",
+    "autolabel": "ok",
+    "oks": "ok",
+    "joint_angle": "ok",
+    "FLIP_IDX": "ok"
+  },
+  "latency": [
+    {
+      "Cấu hình": "one-to-many + NMS, conf 0.25",
+      "preprocess (ms)": 1.57,
+      "inference (ms)": 8.21,
+      "postprocess (ms)": 1.07,
+      "số box": 5
+    },
+    {
+      "Cấu hình": "one-to-many + NMS, conf 0.001",
+      "preprocess (ms)": 1.6,
+      "inference (ms)": 8.36,
+      "postprocess (ms)": 1.27,
+      "số box": 203
+    },
+    {
+      "Cấu hình": "one-to-one NMS-free, conf 0.25",
+      "preprocess (ms)": 1.57,
+      "inference (ms)": 8.58,
+      "postprocess (ms)": 0.38,
+      "số box": 5
+    },
+    {
+      "Cấu hình": "one-to-one NMS-free, conf 0.001",
+      "preprocess (ms)": 1.58,
+      "inference (ms)": 8.52,
+      "postprocess (ms)": 0.39,
+      "số box": 204
+    }
+  ],
+  "result_4b": {
+    "flip_idx": "giải phẫu",
+    "epochs": 40,
+    "imgsz": 640,
+    "Box mAP50-95": 0.9139528301886793,
+    "Pose mAP50": 0.995,
+    "Pose mAP50-95": 0.4357436046254029,
+    "train (phút)": 3.4
+  },
+  "result_4c": null,
+  "answers": {
+    "Q1": "(a) Có 80×60 + 40×30 + 20×15 = 6 300 dự đoán thô.\nÍt hơn 8 400 vì ảnh 640×480 có ít vị trí dự đoán hơn ảnh 640×640.\n(b) Nhãn gốc là cxcywh (tâm, rộng, cao), nhưng bị đọc thành xywh (góc trên-trái, rộng, cao), khiến box lệch phải w/2 và xuống dưới h/2.",
+    "Q2": "Xét mức giảm tương đối, postprocess (hậu xử lý) thay đổi rõ nhất ở conf=0.001:\ntừ 1.30 xuống 0.39 ms, giảm khoảng 70%. \nNếu xét chênh lệch tuyệt đối, inference ở conf=0.25 lớn nhất: tăng 1.04 ms.\nConf thấp và cảnh đông tạo nhiều box cần so sánh, loại trùng nên bỏ NMS tiết kiệm nhiều thời gian hơn. \nTrên CPU, NMS tốn thời gian xử lý;\ntrên NPU, NMS khó tăng tốc và có thể phải chuyển sang CPU.",
+    "Q3": "(a) Nếu cùng class, box có điểm thấp hơn bị loại vì IoU 0.75 > 0.7, có thể làm bỏ sót một công nhân. \nTăng ngưỡng giúp giữ người đứng sát nhau nhưng dễ giữ box trùng; giảm ngưỡng loại trùng mạnh hơn nhưng dễ bỏ sót.\n(b) Head one-to-many gán mỗi vật thể cho nhiều vị trí, tạo thêm tín hiệu học cho phần mạng dùng chung, hỗ trợ head one-to-one học tốt hơn.",
+    "Q4": "(a) Đếm thiếu khi hai người chạm nhau bị gộp thành một vùng; đếm thừa khi vùng của một người bị chia nhỏ hoặc xuất hiện các mảnh nhiễu.\nPanoptic segmentation gán class và mã riêng cho từng người, giúp đếm theo từng đối tượng thay vì số vùng liên thông.\n(b) Model gán chủ yếu thành train (tàu), chiếm 63% pixel trong box xe buýt.\nCó thể do thân xe và dãy cửa sổ giống tàu, khiến model nhầm đặc điểm hình ảnh.",
+    "Q5": "(a) YOLO26-seg dễ có biên thô ở object nhỏ vì chúng chiếm ít pixel trên bản đồ prototype dùng chung.\nMask R-CNN dễ có biên thô ở object lớn vì mask 28×28 phải phóng to nhiều, làm mất chi tiết đường biên.\n(b) Chọn IoU cao nhất riêng lẻ có thể khiến nhiều mask YOLO cùng ghép với một mask Mask R-CNN. \nHungarian matching đảm bảo ghép một–một và tối đa tổng IoU của các cặp.",
+    "Q6": "(a) Điểm A cho mask toàn bộ người mặc áo sáng; điểm B cho mask một phần mặt đường giữa hai chân.\nPrompt bằng box an toàn hơn vì giới hạn vùng đối tượng, còn một điểm có thể rơi vào nền hoặc chỉ chọn một bộ phận.\n(b) Dùng SAM trực tiếp khi cần chọn đối tượng linh hoạt bằng điểm/box và có đủ tài nguyên xử lý. \nVới bài toán cố định cần chạy nhanh trên thiết bị yếu, dùng SAM tạo nhãn, kiểm tra và sửa nhãn rồi train YOLO26-seg nhỏ.",
+    "Q7": "Keypoint R-CNN vẫn vẽ đầu gối và mắt cá trong vùng box của người, thường gần mép dưới ảnh dù các bộ phận đó nằm ngoài khung hình.\nArgmax luôn chọn vị trí có giá trị lớn nhất trên heatmap (bản đồ điểm), kể cả khi không có bằng chứng rõ ràng. \nVì vậy, mỗi keypoint cần điểm tin cậy để lọc các vị trí đoán thiếu căn cứ, tránh coi chúng là điểm thật.",
+    "Q8": "Người 40×80: OKS xuống dưới 0.5 khi sai số khoảng 7–8 pixel.\nNgười 250×500: chưa xuống dưới 0.5 trong phạm vi đồ thị (0–30 pixel).\n\nσ của mắt nhỏ hơn hông vì vị trí mắt thường được xác định chính xác hơn, nên cùng độ lệch sẽ bị phạt nặng hơn.\n\nVới camera trên cao, người chỉ cao khoảng 80 pixel: lệch vài pixel đã ảnh hưởng lớn đến OKS, nhất là ở mắt.\nCần ảnh rõ hơn hoặc ưu tiên các điểm lớn, dễ thấy như vai và hông khi phân tích tư thế.",
+    "Q9": "(a) Báo nhầm: người cúi nhặt đồ hoặc nằm nghỉ làm thân nghiêng > 60°.\nBỏ sót: người ngã theo hướng về phía camera, nhưng thân trên ảnh chưa nghiêng quá 60°.\n\n(b) Model thường học từ ảnh người đứng thẳng. \nKhi xoay ảnh, hình dáng và hướng người khác dữ liệu đã học nên dễ bỏ sót.\n\n(c) Cần theo dõi cùng một người qua nhiều khung hình, xét chuyển động ngã và thời gian nằm bất động;\nkiểm tra độ tin cậy của keypoint và thử nghiệm với góc camera thực tế để giảm báo nhầm.",
+    "Q10": "mAP trên val không nhất thiết giảm rõ rệt, vì cả train và val đều có hổ quay sang phải nên lỗi đổi nhãn trái–phải có thể bị che khuất.\nTuy nhiên, nếu bật lật ảnh khi train, flip_idx đồng nhất vẫn có thể làm sai nhãn và ảnh hưởng kết quả.\n\nBug lộ rõ khi triển khai gặp hổ quay sang trái hoặc ảnh bị lật gương:\nmodel có thể nhầm các keypoint trái–phải. flip_idx cần hoán đổi đúng các cặp trái–phải khi lật ảnh.",
+    "Q11": "1. Hai bàn chân trái/phải thường bị dự đoán gần nhau, dù nhãn thật cách xa nhau; \nright_front_paw có sai số lớn nhất. Khắc phục:\nthêm ảnh có chân tách rõ ở nhiều tư thế, kiểm tra nhãn trái/phải và dùng flip_idx đúng khi lật ảnh.\n\n2. Các khớp chân sau dễ lệch khi hai chân chồng lên nhau, trong khi đầu và thân khá chính xác.\nKhắc phục: bổ sung ảnh chân bị che khuất, gán nhãn nhất quán; \nlọc các điểm có độ tin cậy thấp khi sử dụng.",
+    "Q12": "Dùng σ = 1/12 cho mọi điểm là cách mặc định, nhưng chưa chắc hợp lý:\nmũi và gốc đuôi có độ dễ xác định khác nhau nên không nhất thiết có cùng mức sai số chấp nhận được.\n\nĐể ước lượng σ, cho nhiều người gán nhãn độc lập trên cùng một nhóm ảnh đại diện. \nĐo độ lệch giữa các nhãn cho từng keypoint, chuẩn hóa theo kích thước con hổ rồi ước lượng σ riêng: \nđiểm được đánh dấu nhất quán có σ nhỏ, điểm mơ hồ có σ lớn."
+  },
+  "env": {
+    "device": "cuda",
+    "torch": "2.11.0+cu128",
+    "ultralytics": "8.4.171"
+  }
+}
